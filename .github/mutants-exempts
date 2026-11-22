@@ -1,0 +1,6 @@
+# A mutant that survives goes here, one per line, with the reason it is equivalent behavior:
+#   src/lib.rs:4 # swapping the operand order is the same arithmetic
+# A line without a reason is refused, and a line naming a survivor that no longer exists is
+# refused too, so this list can only shrink by a diff that says why.
+
+src/lib.rs:247 # `<=` refuses a page of exactly the header, which `<` would read as a page of no records; both read as no arguments, the same as EMPTY
