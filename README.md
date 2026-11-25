@@ -1,9 +1,9 @@
 # program_argument_contract
 
-[![check](https://github.com/nifeos/program_argument_contract/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nifeos/program_argument_contract/actions/workflows/ci.yml?query=branch%3Amain)
-[![proofs](https://github.com/nifeos/program_argument_contract/actions/workflows/proofs.yml/badge.svg?branch=main)](https://github.com/nifeos/program_argument_contract/actions/workflows/proofs.yml?query=branch%3Amain)
-[![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/nifeos/program_argument_contract#license)
-[![minimum Rust version](https://img.shields.io/badge/rust-1.88%2B-blue.svg)](https://github.com/nifeos/program_argument_contract/blob/main/Cargo.toml)
+[![check](https://github.com/partsfoundry/program_argument_contract/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/partsfoundry/program_argument_contract/actions/workflows/ci.yml?query=branch%3Amain)
+[![proofs](https://github.com/partsfoundry/program_argument_contract/actions/workflows/proofs.yml/badge.svg?branch=main)](https://github.com/partsfoundry/program_argument_contract/actions/workflows/proofs.yml?query=branch%3Amain)
+[![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/partsfoundry/program_argument_contract#license)
+[![minimum Rust version](https://img.shields.io/badge/rust-1.88%2B-blue.svg)](https://github.com/partsfoundry/program_argument_contract/blob/main/Cargo.toml)
 
 One read-only 4 KiB page that carries a program's argv as length-prefixed bytes. Whoever spawns the
 program writes it with `PageBuilder`, and the program's runtime reads it with `ArgumentPage`. `no_std`,
