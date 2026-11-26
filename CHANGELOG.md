@@ -6,6 +6,9 @@ sentence beside it.
 ## Unreleased
 
 - First version.
+- The builder now clears bytes past the last record, so a reused page holds no earlier
+  arguments: `PageBuilder::finish` zeros every byte from the end of the last record to the end of
+  the page.
 - Removed `PageBuilder::argument_count`. Nothing outside the crate's own tests called it, and a caller that wants the count already has it from `finish`, or reads it from `ArgumentPage::len` after parsing. An item removed before the first release costs no user, while one removed after it would break users.
 
 ## BUGS
