@@ -200,12 +200,6 @@ impl<'p> PageBuilder<'p> {
         MAXIMUM_RECORDS_BYTES - self.used
     }
 
-    /// How many arguments have been pushed.
-    #[must_use]
-    pub const fn argument_count(&self) -> u32 {
-        self.count
-    }
-
     /// Write the header, which is what makes the page an argv. Returns the count.
     // The count is a convenience: a caller that has been counting its own pushes ignores it.
     #[allow(clippy::must_use_candidate)]
@@ -550,7 +544,6 @@ mod tests {
         let big = vec![b'x'; MAXIMUM_RECORDS_BYTES - 4];
         b.push(&big).unwrap();
         assert_eq!(b.push(b""), Err(PushRefused::TooLong));
-        assert_eq!(b.argument_count(), 1);
         b.finish();
         assert_eq!(read(&page), [big]);
 
@@ -625,17 +618,29 @@ mod tests {
         assert!(ArgumentPage::parse(&p).is_empty());
     }
 
-    /// **The counts are numbers, not flags.** `argument_count`, `len`, `is_empty` and `size_hint` each have a
+    /// **The counts are numbers, not flags.** `finish`, `len`, `is_empty` and `size_hint` each have a
     /// two-value wrong answer (0 or 1) that a one-argument fixture cannot tell from the right one,
     /// so this uses three arguments and checks the hint shrinks as the iterator is drained.
     #[test]
     fn counts_track_three_arguments_and_the_hint_shrinks() {
+        let all = [&b"a"[..], b"bb", b"ccc"];
+        // A page built from the first `n` arguments reads back with exactly `n`, for each `n`.
+        for n in 0..=all.len() {
+            let mut page = [0; PAGE_BYTES];
+            let mut b = PageBuilder::new(&mut page).unwrap();
+            for argument in &all[..n] {
+                b.push(argument).unwrap();
+            }
+            assert_eq!(b.finish(), u32::try_from(n).unwrap());
+            let arguments = ArgumentPage::parse(&page);
+            assert_eq!(arguments.len(), n);
+            assert_eq!(arguments.iter().count(), n);
+        }
+
         let mut page = [0; PAGE_BYTES];
         let mut b = PageBuilder::new(&mut page).unwrap();
-        assert_eq!(b.argument_count(), 0);
-        for (i, argument) in [&b"a"[..], b"bb", b"ccc"].into_iter().enumerate() {
+        for argument in all {
             b.push(argument).unwrap();
-            assert_eq!(b.argument_count(), u32::try_from(i).unwrap() + 1);
         }
         assert_eq!(b.finish(), 3);
 
