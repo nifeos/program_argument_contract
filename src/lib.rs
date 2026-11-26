@@ -119,6 +119,8 @@ pub struct WrongPageLength;
 /// (the shell) writes straight into the frame it is about to send and has no stack to spare for a
 /// second 4 KiB copy. A refused argument leaves the page as it was, and nothing is valid until
 /// [`PageBuilder::finish`] writes the header: a page abandoned half-built reads as no arguments.
+/// [`PageBuilder::finish`] also zeros every byte from the end of the last record to the end of the
+/// page, so a page reused for a shorter line holds nothing of the longer line before it.
 ///
 /// # Examples
 ///
@@ -200,13 +202,16 @@ impl<'p> PageBuilder<'p> {
         MAXIMUM_RECORDS_BYTES - self.used
     }
 
-    /// Write the header, which is what makes the page an argv. Returns the count.
+    /// Write the header, which is what makes the page an argv, and zero every byte from the end of
+    /// the last record to the end of the page. Returns the count.
     // The count is a convenience: a caller that has been counting its own pushes ignores it.
     #[allow(clippy::must_use_candidate)]
     pub fn finish(self) -> u32 {
         // `used` never passes `MAXIMUM_RECORDS_BYTES`, which the assertion above keeps inside a `u32`.
         #[allow(clippy::cast_possible_truncation)]
         let total = self.used as u32;
+        // Past the records, the page holds zeros and nothing of an earlier line.
+        self.page[HEADER_BYTES + self.used..].fill(0);
         self.page[8..12].copy_from_slice(&self.count.to_le_bytes());
         self.page[12..16].copy_from_slice(&total.to_le_bytes());
         self.page[..8].copy_from_slice(&MAGIC);
@@ -407,6 +412,23 @@ mod verification {
         assert_eq!(read.next(), Some(&second[..]));
         assert_eq!(read.next(), None);
     }
+
+    /// Falsification: replayable `falsifications/verification.finish_zeros_every_byte_past_the_last_record.patch`
+    /// **After `finish`, every byte past the last record is zero**, on a page of stale bytes: one
+    /// argument of three symbolic bytes, and then any offset from the end of its record to the end
+    /// of the page. The offset is symbolic, so one check covers every byte without a loop.
+    #[kani::proof]
+    #[kani::unwind(17)]
+    fn finish_zeros_every_byte_past_the_last_record() {
+        let argument: [u8; 3] = kani::any();
+        let mut page = [0xa5u8; PAGE_BYTES];
+        let mut builder = PageBuilder::new(&mut page).unwrap();
+        builder.push(&argument).unwrap();
+        builder.finish();
+        let at: usize = kani::any();
+        kani::assume((HEADER_BYTES + record_bytes(argument.len())..PAGE_BYTES).contains(&at));
+        assert_eq!(page[at], 0);
+    }
 }
 
 #[cfg(test)]
@@ -580,6 +602,25 @@ mod tests {
             b.push(b"new").unwrap();
         }
         assert!(ArgumentPage::parse(&page).is_empty());
+    }
+
+    /// **A page reused for a shorter line holds nothing of the longer one.** Every byte from the end
+    /// of the short line's last record to the end of the page is zero after `finish`.
+    #[test]
+    fn a_reused_page_is_zero_past_the_last_record() {
+        let mut page = [0xa5; PAGE_BYTES];
+        let mut b = PageBuilder::new(&mut page).unwrap();
+        for argument in [&b"ripgrep"[..], b"a-long-pattern", &[b'x'; 1000]] {
+            b.push(argument).unwrap();
+        }
+        b.finish();
+        let mut b = PageBuilder::new(&mut page).unwrap();
+        b.push(b"rg").unwrap();
+        b.push(b"").unwrap();
+        b.finish();
+        assert_eq!(read(&page), [&b"rg"[..], b""]);
+        let end = HEADER_BYTES + record_bytes(2) + record_bytes(0);
+        assert!(page[end..].iter().all(|&byte| byte == 0));
     }
 
     /// **No corruption yields a partial argv.** Every single-byte change to the header or to a

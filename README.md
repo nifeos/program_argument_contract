@@ -57,9 +57,11 @@ yields exactly `len()` arguments, with `is_empty` agreeing.
 patch in `falsifications/` that turns it red.
 `the_builder_and_the_parser_round_trip_two_arguments` proves that two arguments of three and two
 symbolic bytes, written over a 4,096-byte page of stale bytes, read back exactly as `PageBuilder`
-wrote them. Its falsification patch is in `falsifications/` too. Each harness verifies in under a
-minute. No proof covers the caller's promise that the address names a mapped page,
-because Kani cannot see a mapping.
+wrote them. `finish_zeros_every_byte_past_the_last_record` proves that after `finish` every byte
+from the end of the last record to the end of such a page is zero, so a page reused for a shorter
+line holds nothing of the longer one. Each of these two has its falsification patch in
+`falsifications/` too. Each harness verifies in under a minute. No proof covers the caller's
+promise that the address names a mapped page, because Kani cannot see a mapping.
 
 ## Building and testing
 

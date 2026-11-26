@@ -1,0 +1,20 @@
+Falsifies `program_argument_contract::verification::finish_zeros_every_byte_past_the_last_record`.
+
+The defect: `finish` writes the header and leaves the bytes past the last record as they were, so
+a page reused for a shorter line still holds the longer line's bytes after its records.
+
+Expected to fail: the harness's `assert_eq!(page[at], 0)`, on the stale `0xa5` bytes past the
+one record.
+
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -210,8 +210,6 @@
+         // `used` never passes `MAXIMUM_RECORDS_BYTES`, which the assertion above keeps inside a `u32`.
+         #[allow(clippy::cast_possible_truncation)]
+         let total = self.used as u32;
+-        // Past the records, the page holds zeros and nothing of an earlier line.
+-        self.page[HEADER_BYTES + self.used..].fill(0);
+         self.page[8..12].copy_from_slice(&self.count.to_le_bytes());
+         self.page[12..16].copy_from_slice(&total.to_le_bytes());
+         self.page[..8].copy_from_slice(&MAGIC);
